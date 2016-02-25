@@ -43,10 +43,9 @@ def SolveRefl(k=0.,f =1.06e-4,omega=1.45e-4+1j*1e-6,wall=True,H=[],x=[],J=30,Nsq
     for a in range(len(H)):
         Nsq[:,a]=np.interp(Z0[:,a],z0,Nsq0)
     
-    #print np.shape(dNsqdz)
     N2 = np.interp(zmid*H[0],z0,Nsq0)
     psi,phi,ce,zpsi=vertModes(N2[::-1],dz*H[0])
-    print ce[:10]
+    log.debug(ce[:10])
     #flip back because our matrices are from the bottom 
     psi = psi[::-1,:]*np.sqrt(dz*H[0])
 
@@ -56,17 +55,17 @@ def SolveRefl(k=0.,f =1.06e-4,omega=1.45e-4+1j*1e-6,wall=True,H=[],x=[],J=30,Nsq
         Amp=1.+1j*0.
         #pin1=pin1/np.max(np.abs(pin1))
         # Hmmm, OK this is hydrostatic.  What should it be?
-        k1 = (omega**2 - f**2)/ce[0]**2 -k00**2
-        print np.pi*2./k1/1.e3,ce[:10]
+        k1 = (np.real(omega)**2 - f**2)/ce[0]**2 -k00**2
+        log.debug(np.pi*2./k1/1.e3,ce[:10])
         if k1<0:
             k1 = -1j*np.sqrt(-k1) # forcingd decays to left e^{kx}
         else:
             k1 = np.sqrt(k1) # wave is cominhg from right  e^{j kx}
         pin1 = Amp*psi[:,0]/psi[0,0]*np.exp(1j*k1*x[0])
         pin2 = pin1 + 1j*k1*dx
-        print psi[0,0],pin1[0],pin2[0]
+        log.debug(psi[0,0],pin1[0],pin2[0])
         pin2 = Amp*psi[:,0]/psi[0,0]*np.exp(1j*k1*x[1])  # = pin1 + dx *dPin/dx 
-        print pin2[0]
+        log.debug(pin2[0])
     if 0:
         pin1=0.*pin1
         pin2=0.*pin2
@@ -77,19 +76,19 @@ def SolveRefl(k=0.,f =1.06e-4,omega=1.45e-4+1j*1e-6,wall=True,H=[],x=[],J=30,Nsq
     E1 = psi[:,0:nmodes]+0.*1j
     K = np.zeros((nmodes,nmodes))*1j
     for j in range(nmodes):
-        kk = (omega**2 - f**2)/ce[j]**2 - k00**2
+        kk = (np.real(omega)**2 - f**2)/ce[j]**2 - k00**2
         if kk<0:
             kk = -1j*np.sqrt(-kk)  # decay to left e^(kx)
         else:
             kk = -np.sqrt(kk) # leftward! e^(-jkx)
         K[j,j] = 1j*kk*dx
-    print 'lam',np.pi*2./K[0,0]/1e3*dx
+    log.debug('lam',np.pi*2./K[0,0]/1e3*dx)
     alpha=[]
     beta=[]
     for k in range(I+1):
         alpha.append(np.zeros((J,J))*1j)    
         beta.append(np.zeros((J))*1j)
-    print E1.dot(E1.transpose().conj())
+    log.debug(E1.dot(E1.transpose().conj()))
     ee = (E1.dot(K)).dot(E1.transpose().conj())
     alpha[0]=inv(eye+ee)
     beta[0]=pin1-(inv(eye+ee)).dot(pin2)
@@ -104,7 +103,6 @@ def SolveRefl(k=0.,f =1.06e-4,omega=1.45e-4+1j*1e-6,wall=True,H=[],x=[],J=30,Nsq
         P2[j,j-1]=1;P2[j,j]=-2;P2[j,j+1]=1;
     P1[0,1]=1;P1[J-1,J-2]=-1;
     P2[0,0]=-2; P2[0,1]=1;P2[J-1,J-2]=1;P2[J-1,J-1]=-2;
-    #print "OK5"
     ## So, that eliminates the error from the LHS....
     dxsq=dx**2
     for i in range(1,I-1):
@@ -112,12 +110,12 @@ def SolveRefl(k=0.,f =1.06e-4,omega=1.45e-4+1j*1e-6,wall=True,H=[],x=[],J=30,Nsq
         gamsq = lamsq/(Nsq[:,i] - 0*np.real(omega)**2)
         lamsq = np.diag(lamsq,k=0)+1j*0.
         gamsq = np.diag(gamsq,k=0)+1j*0.
-        #print np.shape(Nsq)
         G2 = -2*Hx[i]/H[i]*Z +0*1j      # G2  1/m
         G3 = -(Hxx[i]*H[i]-2*Hx[i]**2)/H[i]**2*Z + 0*1j  # 1/m^2
         G3 = G3 +  gamsq*dNsqdz[:,i]/H[i]  
         G4 = (Hx[i]**2*Z.dot(Z)-lamsq)/H[i]**2 +0*1j   # G4  1/m^2
         # get A, B , C , D
+        
         D = np.zeros((J))*1j ## This needs to be set to something if you want internal forcing (versus an incoming wave)
         
         if 0:
@@ -128,17 +126,17 @@ def SolveRefl(k=0.,f =1.06e-4,omega=1.45e-4+1j*1e-6,wall=True,H=[],x=[],J=30,Nsq
         B = -eye*(2./dxsq + k00**2) + G3.dot(P1)/2./dz +G4.dot(P2)/dz**2 +0.*1j   # 1/m^2 + 1/m^2 + 1/m^2
         C = eye*1./dxsq + G2.dot(P1)/4./dx/dz +0.*1j     #  1/m^2
         if True:          # use BC
-            b1 = (lamsq[0,0]-Z0[-1,i]*Hx[i]**2)/H[i]/H[i];  # 1/m^2 
+            b1 = (lamsq[0,0] + zmid[0]*Hx[i]**2)/H[i]/H[i];  # 1/m^2 
             b2=-Hx[i]/H[i];  # 1/m 
-            b3 = f*k00/omega*Hx[i]/H[i];  # 1/m^2
+            b3 = +f*k00/omega*Hx[i]/H[i];  # 1/m^2
 
             # Note that this gives proper units to the BCs
 
             A[0,0]=-b2/2./dx; A[0,1]=0; # seafloor
             A[J-1,J-1]=0.;A[J-1,J-2]=0. # sea surface...
             
-            B[0,0]= b1/dz + b3;  B[0,1]=-b1/dz
-            B[J-1,J-1]= lamsq[-1,-1]/H[i]**2/dz
+            B[0,0]= -b1/dz + b3;  B[0,1]= +b1/dz
+            B[J-1,J-1]= lamsq[-1,-1]/H[i]**2/dz  
             B[J-1,J-2]=-lamsq[-1,-1]/H[i]**2/dz
              
             C[0,0]=b2/2./dx;C[0,1]=0;
@@ -153,7 +151,7 @@ def SolveRefl(k=0.,f =1.06e-4,omega=1.45e-4+1j*1e-6,wall=True,H=[],x=[],J=30,Nsq
     P = np.zeros((J,I))+0.0*1j
 
     if wall:        
-        print "Wall"
+        log.debug("Wall")
         P[:,I-1] = inv(eye*(1.-f*k00*dx/omega)-alpha[I-2]).dot(beta[I-2])
     else: # radiating...
         N2 = np.interp(zmid*H[-1],z0,Nsq0)
@@ -163,9 +161,9 @@ def SolveRefl(k=0.,f =1.06e-4,omega=1.45e-4+1j*1e-6,wall=True,H=[],x=[],J=30,Nsq
         E2 = psi[:,0:nmodes]+0.*1j
         K = np.zeros((nmodes,nmodes))*1j
         for j in range(nmodes):
-            kk = (omega**2 - f**2)/ce[j]**2 - k00**2
+            kk = (np.real(omega)**2 - f**2)/ce[j]**2 - k00**2
             if j==0:
-                print "kk[0]",kk
+                log.debug("kk[0]",kk)
             if kk<0:
                 kk = 1j*np.sqrt(-kk)  # decay to right e^(-kx)
             else:
