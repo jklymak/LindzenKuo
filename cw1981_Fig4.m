@@ -9,8 +9,8 @@ sig=sqrt((omega^2-f^2)/(Nsq-omega^2)); % characteristic slope for no thermocline
 x=linspace(0e3,80e3,I); dx=x(2)-x(1);
  
 % geometry/topography
-H=225-75*tanh(0.1e-3*(x-40e3)); %H=300+x*0; 
-H=225-75*tanh(0.04e-3*(x-40e3)); %H=300+x*0; 
+H=225-75*tanh(0.1e-3*(x-30e3)); %H=300+x*0; 
+                                %H=225-75*tanh(0.04e-3*(x-40e3)); %H=300+x*0; 
 if 0
     H = H*0.+225;
     ind = find((x>30e3)&(x<50e3));
@@ -106,7 +106,7 @@ for i=2:I-1
 end
 
 
-save -V7 cw1981_Flatter.mat xxx zzz u w 
+save -V7 cw1981_Fig4.mat xxx zzz u w 
 figure
 subplot(2,1,1)
 % pcolor(xxx/1e3,zzz,abs(phi1)); shading flat; colorbar

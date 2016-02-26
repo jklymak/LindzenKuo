@@ -8,7 +8,7 @@ import numpy as np
 from vertmodes import  vertModes
 import logging
 
-def SolveRefl(k=0.,f =1.06e-4,omega=1.45e-4+1j*1e-6,wall=True,H=[],x=[],J=30,Nsq0=[],z0=[]):
+def SolveRefl(k=0.,f =1.06e-4,omega=1.45e-4+1j*1e-6,wall=True,H=[],x=[],J=30,Nsq0=[],z0=[],Incoming=True):
     '''x,z,H,P=SolveRefl(k=0.)
      This one does variable Nsq
     ''' 
@@ -66,7 +66,7 @@ def SolveRefl(k=0.,f =1.06e-4,omega=1.45e-4+1j*1e-6,wall=True,H=[],x=[],J=30,Nsq
         log.debug(psi[0,0],pin1[0],pin2[0])
         pin2 = Amp*psi[:,0]/psi[0,0]*np.exp(1j*k1*x[1])  # = pin1 + dx *dPin/dx 
         log.debug(pin2[0])
-    if 0:
+    if not(Incoming):
         pin1=0.*pin1
         pin2=0.*pin2
 
@@ -92,9 +92,6 @@ def SolveRefl(k=0.,f =1.06e-4,omega=1.45e-4+1j*1e-6,wall=True,H=[],x=[],J=30,Nsq
     ee = (E1.dot(K)).dot(E1.transpose().conj())
     alpha[0]=inv(eye+ee)
     beta[0]=pin1-(inv(eye+ee)).dot(pin2)
-    #BAD
-    #alpha[0]=eye
-    #beta[0] = 1j*k1*dx*pin1
 
     P1 = np.zeros((J,J));
     P2 = np.zeros((J,J));
@@ -118,17 +115,16 @@ def SolveRefl(k=0.,f =1.06e-4,omega=1.45e-4+1j*1e-6,wall=True,H=[],x=[],J=30,Nsq
         
         D = np.zeros((J))*1j ## This needs to be set to something if you want internal forcing (versus an incoming wave)
         
-        if 0:
-            if x[i]<10e3:
-                D[:J/3]+=3.*1e-6
-                D[J/3:]+=-2.*1e-6
+        if not(Incoming):
+            if np.abs(x[i]-60e3)<1.e3:
+                D+=1e-9
         A = eye*1./dxsq - G2.dot(P1)/4./dx/dz +0.*1j   #1/m^2
         B = -eye*(2./dxsq + k00**2) + G3.dot(P1)/2./dz +G4.dot(P2)/dz**2 +0.*1j   # 1/m^2 + 1/m^2 + 1/m^2
         C = eye*1./dxsq + G2.dot(P1)/4./dx/dz +0.*1j     #  1/m^2
         if True:          # use BC
             b1 = (lamsq[0,0] + zmid[0]*Hx[i]**2)/H[i]/H[i];  # 1/m^2 
             b2=-Hx[i]/H[i];  # 1/m 
-            b3 = +f*k00/omega*Hx[i]/H[i];  # 1/m^2
+            b3 = f*k00/omega*Hx[i]/H[i];  # 1/m^2
 
             # Note that this gives proper units to the BCs
 
@@ -179,5 +175,5 @@ def SolveRefl(k=0.,f =1.06e-4,omega=1.45e-4+1j*1e-6,wall=True,H=[],x=[],J=30,Nsq
         P[:,i] = alpha[i].dot(P[:,i+1])+beta[i]
 
         
-    return x,zmid,H,P,E1,psi,alpha,beta,lamsq
+    return x,zmid,H,P,psi #[E1,psi,alpha,beta,lamsq]
    
